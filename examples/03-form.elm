@@ -1,6 +1,7 @@
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onInput, onClick)
+import Char exposing (isDigit, isUpper, isLower)
 
 
 main =
@@ -19,12 +20,14 @@ type alias Model =
   { name : String
   , password : String
   , passwordAgain : String
+  , age : String
+  , validation : Validation
   }
 
 
 model : Model
 model =
-  Model "" "" ""
+  Model "" "" "" "" None
 
 
 
@@ -35,6 +38,13 @@ type Msg
     = Name String
     | Password String
     | PasswordAgain String
+    | Age String
+    | Submit
+
+type Validation
+    = None
+    | OK
+    | Error String
 
 
 update : Msg -> Model -> Model
@@ -49,6 +59,12 @@ update msg model =
     PasswordAgain password ->
       { model | passwordAgain = password }
 
+    Age age ->
+      { model | age = age }
+
+    Submit ->
+      {model | validation = validate model}
+
 
 
 -- VIEW
@@ -57,20 +73,40 @@ update msg model =
 view : Model -> Html Msg
 view model =
   div []
-    [ input [ type_ "text", placeholder "Name", onInput Name ] []
-    , input [ type_ "password", placeholder "Password", onInput Password ] []
-    , input [ type_ "password", placeholder "Re-enter Password", onInput PasswordAgain ] []
-    , viewValidation model
+    [ div [] [ input [ type_ "text", placeholder "Name", onInput Name ] [] ]
+    , div [] [ input [ type_ "password", placeholder "Password", onInput Password ] [] ]
+    , div [] [ input [ type_ "password", placeholder "Re-enter Password", onInput PasswordAgain ] [] ]
+    , div [] [ input [ type_ "number", placeholder "Your age", onInput Age ] [] ]
+    , div [] [ button [ onClick Submit ] [ text "Submit" ] ]
+    , viewValidation model.validation
     ]
 
-
-viewValidation : Model -> Html msg
-viewValidation model =
-  let
-    (color, message) =
-      if model.password == model.passwordAgain then
-        ("green", "OK")
+validate : Model -> Validation
+validate model =
+    let
+      { name, password, passwordAgain, age, validation} = model
+    in
+      if password /= passwordAgain then
+        Error "Passwords do not match"
+      else if String.length password < 8 then
+        Error "Passwords must be longer than 8 characters"
+      else if not (String.any isUpper password) then
+        Error "Password must contain uppercase"
+      else if not (String.any isLower password) then
+        Error "Password must contain lowercase"
+      else if not (String.any isDigit password) then
+        Error "Password must contain nummeric characters"
+      else if not (String.all isDigit age) then
+        Error "Age must be a positive number"
       else
-        ("red", "Passwords do not match!")
-  in
-    div [ style [("color", color)] ] [ text message ]
+        OK
+
+viewValidation : Validation -> Html msg
+viewValidation validation =
+  case validation of
+    None ->
+      div [] [ text "" ]
+    OK ->
+      div [ style [("color", "green")] ] [ text "OK" ]
+    Error err ->
+      div [ style [("color", "red")] ] [ text err ]
